@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=390, initial-scale=1.0" />
+  <title>TYBG Dice Game</title>
+
+  <!-- Farcaster Mini App Metadata -->
+  <meta name="fc:miniapp" content='{
+    "version":"1",
+    "imageUrl":"https://your-domain.vercel.app/preview.png",
+    "button":{
+      "title":"PLAY DICE GAME",
+      "action":{
+        "type":"launch_frame",
+        "name":"TYBG Dice",
+        "url":"https://your-domain.vercel.app",
+        "splashImageUrl":"https://your-domain.vercel.app/splash.png",
+        "splashBackgroundColor":"#7c3aed"
+      }
+    }
+  }' />
+
+  <style>
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      max-width: 390px;
+      margin-inline: auto;
+      padding: 20px;
+      transition: background 0.3s ease;
+    }
+
+    body.light-mode {
+      background: linear-gradient(135deg, #a8b5ff 0%, #c9a8e8 100%);
+      color: #1a1a1a;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 25px;
+      right: 25px;
+      width: 30px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    body.light-mode .theme-toggle {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    body.light-mode .header {
+      background: rgba(255, 255, 255, 0.4);
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      font-size: 32px;
+      margin: 0 0 8px 0;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+      margin: 0;
+    }
+
+    .dice-container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 20px;
+      text-align: center;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    body.light-mode .dice-container {
+      background: rgba(255, 255, 255, 0.4);
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .dice-number {
+      font-size: 80px;
+      font-weight: 800;
+      margin: 20px 0;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .dice-label {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 10px;
+    }
+
+    .prediction-section {
+      margin-bottom: 20px;
+    }
+
+    .prediction-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .prediction-btn {
+      flex: 1;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    body.light-mode .prediction-btn {
+      background: rgba(255, 255, 255, 0.4);
+      border-color: rgba(0, 0, 0, 0.2);
+      color: #1a1a1a;
+    }
+
+    .prediction-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+
+    .prediction-btn.selected {
+      background: rgba(139, 92, 246, 0.4);
+      border-color: #8b5cf6;
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .prediction-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .roll-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+      margin-bottom: 12px;
+    }
+
+    .roll-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(139, 92, 246, 0.6);
+    }
+
+    .roll-btn:disabled {
+      background: rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.5);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .claim-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: #000;
+      border: none;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
+      display: none;
+    }
+
+    .claim-btn.show {
+      display: block;
+    }
+
+    .claim-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(74, 222, 128, 0.6);
+    }
+
+    .claim-btn:disabled {
+      background: rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.5);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .share-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 17px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+      margin-top: 12px;
+      display: none;
+    }
+
+    .share-btn.show {
+      display: block;
+    }
+
+    .share-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(245, 158, 11, 0.6);
+    }
+
+    .info-box {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    body.light-mode .info-box {
+      background: rgba(255, 255, 255, 0.4);
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-label {
+      opacity: 0.8;
+    }
+
+    .info-value {
+      font-weight: 700;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.loading {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .status.success {
+      background: rgba(74, 222, 128, 0.2);
+      border: 1px solid rgba(74, 222, 128, 0.4);
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .status a {
+      color: #4ade80;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .loader {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid #fff;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .rolling {
+      animation: rollDice 0.5s ease-in-out;
+    }
+
+    @keyframes rollDice {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      25% { transform: rotate(90deg) scale(1.2); }
+      50% { transform: rotate(180deg) scale(0.8); }
+      75% { transform: rotate(270deg) scale(1.2); }
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 13px;
+    }
+
+    .footer a {
+      color: #4ade80;
+      text-decoration: none;
+      font-weight: 700;
+      transition: opacity 0.3s ease;
+    }
+
+    .footer a:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    .result-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 14px;
+      margin-top: 12px;
+    }
+
+    .result-badge.win {
+      background: rgba(74, 222, 128, 0.3);
+      border: 2px solid #4ade80;
+      color: #4ade80;
+    }
+
+    .result-badge.lose {
+      background: rgba(239, 68, 68, 0.3);
+      border: 2px solid #ef4444;
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  
+  <div class="container">
+    <div class="header">
+      <h1>🎲 TYBG Dice</h1>
+      <div class="subtitle">Predict & Win 1 TYBG Token!</div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-row">
+        <span class="info-label">Reward:</span>
+        <span class="info-value">1 TYBG</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Cost:</span>
+        <span class="info-value">Gas Only</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Connected:</span>
+        <span class="info-value" id="walletAddress">Not Connected</span>
+      </div>
+    </div>
+
+    <div class="dice-container">
+      <div class="dice-label">Roll Result</div>
+      <div class="dice-number" id="diceNumber">?</div>
+      <div id="resultBadge"></div>
+    </div>
+
+    <div class="prediction-section">
+      <div class="prediction-buttons">
+        <button class="prediction-btn" id="aboveBtn" data-prediction="above">
+          <div style="font-size: 24px; margin-bottom: 4px;">⬆️</div>
+          <div>Above 50.5</div>
+        </button>
+        <button class="prediction-btn" id="belowBtn" data-prediction="below">
+          <div style="font-size: 24px; margin-bottom: 4px;">⬇️</div>
+          <div>Below 50.5</div>
+        </button>
+      </div>
+
+      <button class="roll-btn" id="rollBtn" disabled>
+        Select Your Prediction
+      </button>
+
+      <button class="claim-btn" id="claimBtn">
+        🎉 Claim 1 TYBG Reward
+      </button>
+
+      <button class="share-btn" id="shareBtn">
+        📢 Share Your Win on Farcaster
+      </button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="footer">
+      Built with ❤️ | Follow: <a href="https://farcaster.xyz/yourname" target="_blank">@yourname</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk';
+    import {
+      createConfig, connect, switchChain, writeContract, getAccount, http, readContract
+    } from 'https://esm.sh/@wagmi/core';
+    import { base } from 'https://esm.sh/@wagmi/core/chains';
+    import { farcasterMiniApp } from 'https://esm.sh/@farcaster/miniapp-wagmi-connector';
+
+    // Contract Configuration
+    const DICE_CONTRACT = '0xYourContractAddressHere';
+    const TYBG_TOKEN = '0xYourTYBGTokenAddressHere';
+    
+    const DICE_ABI = [
+      {
+        "inputs": [{"internalType": "bool", "name": "prediction", "type": "bool"}, {"internalType": "uint256", "name": "randomNum", "type": "uint256"}],
+        "name": "claimReward",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "REWARD_AMOUNT",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    const config = createConfig({
+      chains: [base],
+      transports: { [base.id]: http() }
+    });
+
+    // DOM Elements
+    const themeToggle = document.getElementById('themeToggle');
+    const walletAddress = document.getElementById('walletAddress');
+    const diceNumber = document.getElementById('diceNumber');
+    const resultBadge = document.getElementById('resultBadge');
+    const aboveBtn = document.getElementById('aboveBtn');
+    const belowBtn = document.getElementById('belowBtn');
+    const rollBtn = document.getElementById('rollBtn');
+    const claimBtn = document.getElementById('claimBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const statusDiv = document.getElementById('status');
+
+    // Game State
+    let selectedPrediction = null;
+    let rolledNumber = null;
+    let isWinner = false;
+    let isConnected = false;
+
+    // Theme Toggle
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-mode');
+      themeToggle.textContent = '☀️';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('light-mode');
+      const isLight = document.body.classList.contains('light-mode');
+      themeToggle.textContent = isLight ? '☀️' : '🌙';
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    });
+
+    // Status Functions
+    function showStatus(message, type) {
+      statusDiv.innerHTML = message;
+      statusDiv.className = `status show ${type}`;
+    }
+
+    function hideStatus() {
+      statusDiv.classList.remove('show');
+    }
+
+    // Initialize Farcaster SDK
+    console.log('Initializing Farcaster SDK...');
+    
+    sdk.actions.ready({ disableNativeGestures: true })
+      .then(async () => {
+        console.log("Farcaster MiniApp SDK ready!");
+        showStatus('App ready! Connecting wallet...', 'success');
+        
+        try {
+          await connect(config, {
+            connector: farcasterMiniApp(),
+            chainId: arbitrum.id
+          });
+          
+          const account = getAccount(config);
+          if (account?.address) {
+            isConnected = true;
+            const shortAddress = `${account.address.slice(0, 6)}...${account.address.slice(-4)}`;
+            walletAddress.textContent = shortAddress;
+            console.log('Wallet connected:', account.address);
+            showStatus(`Connected: ${shortAddress}`, 'success');
+            setTimeout(() => hideStatus(), 3000);
+          } else {
+            showStatus('Wallet connection incomplete', 'error');
+          }
+
+        } catch (err) {
+          console.error('Wallet connection failed:', err);
+          showStatus('Wallet connection failed. Please try again.', 'error');
+        }
+
+        // Auto-prompt to add app
+        const hasPromptedAddApp = sessionStorage.getItem('hasPromptedAddApp');
+        if (!hasPromptedAddApp) {
+          try {
+            console.log('Auto-prompting add app...');
+            await sdk.actions.addMiniApp();
+            sessionStorage.setItem('hasPromptedAddApp', 'true');
+            console.log('App added successfully!');
+          } catch (error) {
+            console.log('Add app prompt dismissed or failed:', error.name);
+            sessionStorage.setItem('hasPromptedAddApp', 'true');
+          }
+        }
+
+      })
+      .catch(err => {
+        console.error("SDK initialization failed:", err);
+        showStatus('Failed to initialize. Please reopen in Warpcast.', 'error');
+      });
+
+    // Prediction Selection
+    aboveBtn.addEventListener('click', () => {
+      selectedPrediction = true; // true = above 50.5
+      aboveBtn.classList.add('selected');
+      belowBtn.classList.remove('selected');
+      updateRollButton();
+    });
+
+    belowBtn.addEventListener('click', () => {
+      selectedPrediction = false; // false = below 50.5
+      belowBtn.classList.add('selected');
+      aboveBtn.classList.remove('selected');
+      updateRollButton();
+    });
+
+    function updateRollButton() {
+      if (selectedPrediction !== null) {
+        rollBtn.disabled = false;
+        rollBtn.textContent = '🎲 Roll the Dice!';
+      } else {
+        rollBtn.disabled = true;
+        rollBtn.textContent = 'Select Your Prediction';
+      }
+    }
+
+    // Roll Dice
+    rollBtn.addEventListener('click', () => {
+      if (selectedPrediction === null) return;
+
+      // Disable buttons during roll
+      aboveBtn.disabled = true;
+      belowBtn.disabled = true;
+      rollBtn.disabled = true;
+      claimBtn.classList.remove('show');
+      shareBtn.classList.remove('show');
+      resultBadge.innerHTML = '';
+
+      // Animate dice
+      diceNumber.classList.add('rolling');
+      
+      // Generate random number (0-100)
+      setTimeout(() => {
+        rolledNumber = Math.floor(Math.random() * 101);
+        diceNumber.textContent = rolledNumber;
+        diceNumber.classList.remove('rolling');
+
+        // Check if won
+        if (selectedPrediction) {
+          // Predicted above 50.5
+          isWinner = rolledNumber > 50;
+        } else {
+          // Predicted below 50.5
+          isWinner = rolledNumber < 50;
+        }
+
+        // Show result
+        if (isWinner) {
+          resultBadge.innerHTML = '<div class="result-badge win">🎉 YOU WON!</div>';
+          claimBtn.classList.add('show');
+          showStatus('Congratulations! Click below to claim your 1 TYBG reward!', 'success');
+        } else {
+          resultBadge.innerHTML = '<div class="result-badge lose">😢 TRY AGAIN</div>';
+          showStatus('Better luck next time! Try another prediction.', 'error');
+          setTimeout(() => {
+            resetGame();
+          }, 3000);
+        }
+
+        // Re-enable prediction buttons
+        aboveBtn.disabled = false;
+        belowBtn.disabled = false;
+      }, 500);
+    });
+
+    // Claim Reward
+    claimBtn.addEventListener('click', async () => {
+      if (!isWinner || rolledNumber === null || selectedPrediction === null) return;
+
+      claimBtn.disabled = true;
+      hideStatus();
+
+      try {
+        showStatus('<span class="loader"></span>Claiming your reward...', 'loading');
+
+        // Switch to Arbitrum if needed
+        await switchChain(config, { chainId: arbitrum.id });
+
+        // Call claimReward function
+        const txHash = await writeContract(config, {
+          address: DICE_CONTRACT,
+          abi: DICE_ABI,
+          functionName: 'claimReward',
+          args: [selectedPrediction, BigInt(rolledNumber)]
+        });
+
+        const explorerUrl = `https://arbiscan.io/tx/${txHash}`;
+
+        showStatus(
+          `🎉 Reward Claimed! You received 1 TYBG!<br><a href="${explorerUrl}" target="_blank">View Transaction</a>`,
+          'success'
+        );
+
+        shareBtn.classList.add('show');
+
+        setTimeout(() => {
+          resetGame();
+        }, 10000);
+
+      } catch (error) {
+        console.error('Claim error:', error);
+        let errorMsg = 'Failed to claim reward';
+        if (error.message.includes('User rejected')) {
+          errorMsg = 'Transaction rejected by user';
+        } else if (error.message) {
+          errorMsg = error.message;
+        }
+        showStatus(`Error: ${errorMsg}`, 'error');
+        claimBtn.disabled = false;
+      }
+    });
+
+    // Share on Farcaster
+    shareBtn.addEventListener('click', async () => {
+      try {
+        shareBtn.disabled = true;
+        showStatus('<span class="loader"></span>Opening cast composer...', 'loading');
+
+        await sdk.actions.composeCast({
+          text: `🎲 I just won 1 TYBG playing the Dice Game! 
+Rolled ${rolledNumber} and predicted ${selectedPrediction ? 'Above' : 'Below'} 50.5! 
+
+Try your luck now! 🍀`,
+          embeds: ["https://your-domain.vercel.app"]
+        });
+
+        showStatus('Cast composer opened!', 'success');
+        setTimeout(() => hideStatus(), 3000);
+      } catch (error) {
+        console.error('Share error:', error);
+        showStatus('Failed to open cast composer', 'error');
+      } finally {
+        shareBtn.disabled = false;
+      }
+    });
+
+    // Reset Game
+    function resetGame() {
+      selectedPrediction = null;
+      rolledNumber = null;
+      isWinner = false;
+      diceNumber.textContent = '?';
+      resultBadge.innerHTML = '';
+      aboveBtn.classList.remove('selected');
+      belowBtn.classList.remove('selected');
+      claimBtn.classList.remove('show');
+      shareBtn.classList.remove('show');
+      updateRollButton();
+      hideStatus();
+    }
+  </script>
+</body>
+</html>
