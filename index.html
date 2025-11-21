@@ -8,14 +8,14 @@
   <!-- Farcaster Mini App Metadata -->
   <meta name="fc:miniapp" content='{
     "version":"1",
-    "imageUrl":"https://your-domain.vercel.app/preview.png",
+    "imageUrl":"https://dice-game-nine-ruby.vercel.app/preview.png",
     "button":{
       "title":"PLAY DICE GAME",
       "action":{
         "type":"launch_frame",
         "name":"TYBG Dice",
-        "url":"https://your-domain.vercel.app",
-        "splashImageUrl":"https://your-domain.vercel.app/splash.png",
+        "url":"https://dice-game-nine-ruby.vercel.app/",
+        "splashImageUrl":"https://dice-game-nine-ruby.vercel.app/splash.png",
         "splashBackgroundColor":"#7c3aed"
       }
     }
@@ -423,10 +423,6 @@
 
     <div class="info-box">
       <div class="info-row">
-        <span class="info-label">Chain:</span>
-        <span class="info-value">Base</span>
-      </div>
-      <div class="info-row">
         <span class="info-label">Reward:</span>
         <span class="info-value">1 TYBG</span>
       </div>
@@ -487,8 +483,8 @@
     import { farcasterMiniApp } from 'https://esm.sh/@farcaster/miniapp-wagmi-connector';
 
     // Contract Configuration
-    const DICE_CONTRACT = '0xYourContractAddressHere';
-    const TYBG_TOKEN = '0xYourTYBGTokenAddressHere';
+    const DICE_CONTRACT = '0x6b5DbbF1049691d430bE3135419B47093523ecA6';
+    const TYBG_TOKEN = '0x0d97F261b1e88845184f678e2d1e7a98D9FD38dE';
     
     const DICE_ABI = [
       {
@@ -556,54 +552,31 @@
 
     // Initialize Farcaster SDK
     console.log('Initializing Farcaster SDK...');
+       sdk.actions.ready({ disableNativeGestures: true })
+  .then(async () => {
+    console.log("Farcaster MiniApp SDK ready!");
+    showStatus('App ready! Connecting wallet...', 'success');
     
-    sdk.actions.ready({ disableNativeGestures: true })
-      .then(async () => {
-        console.log("Farcaster MiniApp SDK ready!");
-        showStatus('App ready! Connecting wallet...', 'loading');
-        
-        try {
-          // First check if already connected
-          let account = getAccount(config);
-          
-          if (!account?.address) {
-            // Try to connect
-            const result = await connect(config, {
-              connector: farcasterMiniApp(),
-              chainId: base.id
-            });
-            console.log('Connection result:', result);
-            
-            // Get account again after connection
-            account = getAccount(config);
-          }
-          
-          if (account?.address) {
-            isConnected = true;
-            const shortAddress = `${account.address.slice(0, 6)}...${account.address.slice(-4)}`;
-            walletAddress.textContent = shortAddress;
-            console.log('Wallet connected:', account.address);
-            console.log('Chain ID:', account.chainId);
-            showStatus(`✅ Connected: ${shortAddress}`, 'success');
-            setTimeout(() => hideStatus(), 3000);
-          } else {
-            console.warn('No address found after connection attempt');
-            showStatus('⚠️ Wallet not connected. Some features may be limited.', 'error');
-            // Still allow the app to work, but disable claim functionality
-            setTimeout(() => hideStatus(), 5000);
-          }
+    try {
+      await connect(config, {
+        connector: farcasterMiniApp(),
+        chainId: arbitrum.id
+      });
+      
+      const account = getAccount(config);
+      if (account?.address) {
+        isConnected = true;
+        console.log('Wallet connected:', account.address);
+        showStatus(`Connected: ${account.address.slice(0, 6)}...${account.address.slice(-4)}`, 'success');
+        setTimeout(() => hideStatus(), 3000);
+      } else {
+        showStatus('Wallet connection incomplete', 'error');
+      }
 
-        } catch (err) {
-          console.error('Wallet connection error:', err);
-          console.error('Error details:', {
-            message: err.message,
-            name: err.name,
-            stack: err.stack
-          });
-          showStatus('⚠️ Could not connect wallet. Please ensure you are using Warpcast app.', 'error');
-          // Allow app to continue but with limited functionality
-          setTimeout(() => hideStatus(), 5000);
-        }
+    } catch (err) {
+      console.error('Wallet connection failed:', err);
+      showStatus('Wallet connection failed. Please try again.', 'error');
+    }
 
         // Auto-prompt to add app
         const hasPromptedAddApp = sessionStorage.getItem('hasPromptedAddApp');
@@ -703,36 +676,14 @@
     claimBtn.addEventListener('click', async () => {
       if (!isWinner || rolledNumber === null || selectedPrediction === null) return;
 
-      // Check if wallet is connected
-      if (!isConnected) {
-        showStatus('❌ Please connect your wallet first. Try reopening in Warpcast.', 'error');
-        return;
-      }
-
       claimBtn.disabled = true;
       hideStatus();
 
       try {
-        showStatus('<span class="loader"></span>Preparing transaction...', 'loading');
-
-        // Get current account
-        const account = getAccount(config);
-        if (!account?.address) {
-          throw new Error('Wallet not connected');
-        }
-
-        console.log('Claiming reward with:', {
-          address: account.address,
-          prediction: selectedPrediction,
-          rolledNumber: rolledNumber
-        });
-
-        showStatus('<span class="loader"></span>Switching to Base chain...', 'loading');
-        
-        // Switch to Base if needed
-        await switchChain(config, { chainId: base.id });
-
         showStatus('<span class="loader"></span>Claiming your reward...', 'loading');
+
+        // Switch to Arbitrum if needed
+        await switchChain(config, { chainId: arbitrum.id });
 
         // Call claimReward function
         const txHash = await writeContract(config, {
@@ -742,7 +693,7 @@
           args: [selectedPrediction, BigInt(rolledNumber)]
         });
 
-        const explorerUrl = `https://basescan.org/tx/${txHash}`;
+        const explorerUrl = `https://arbiscan.io/tx/${txHash}`;
 
         showStatus(
           `🎉 Reward Claimed! You received 1 TYBG!<br><a href="${explorerUrl}" target="_blank">View Transaction</a>`,
@@ -757,23 +708,13 @@
 
       } catch (error) {
         console.error('Claim error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          name: error.name,
-          cause: error.cause
-        });
-        
         let errorMsg = 'Failed to claim reward';
-        if (error.message.includes('User rejected') || error.message.includes('rejected')) {
-          errorMsg = '❌ Transaction rejected by user';
-        } else if (error.message.includes('Wallet not connected')) {
-          errorMsg = '❌ Wallet not connected. Please reopen in Warpcast.';
-        } else if (error.message.includes('insufficient funds')) {
-          errorMsg = '❌ Insufficient funds for gas';
+        if (error.message.includes('User rejected')) {
+          errorMsg = 'Transaction rejected by user';
         } else if (error.message) {
-          errorMsg = `❌ ${error.message.slice(0, 100)}`;
+          errorMsg = error.message;
         }
-        showStatus(errorMsg, 'error');
+        showStatus(`Error: ${errorMsg}`, 'error');
         claimBtn.disabled = false;
       }
     });
