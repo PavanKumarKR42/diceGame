@@ -552,34 +552,31 @@
 
     // Initialize Farcaster SDK
     console.log('Initializing Farcaster SDK...');
+       sdk.actions.ready({ disableNativeGestures: true })
+  .then(async () => {
+    console.log("Farcaster MiniApp SDK ready!");
+    showStatus('App ready! Connecting wallet...', 'success');
     
-    sdk.actions.ready({ disableNativeGestures: true })
-      .then(async () => {
-        console.log("Farcaster MiniApp SDK ready!");
-        showStatus('App ready! Connecting wallet...', 'success');
-        
-        try {
-          await connect(config, {
-            connector: farcasterMiniApp(),
-            chainId: arbitrum.id
-          });
-          
-          const account = getAccount(config);
-          if (account?.address) {
-            isConnected = true;
-            const shortAddress = `${account.address.slice(0, 6)}...${account.address.slice(-4)}`;
-            walletAddress.textContent = shortAddress;
-            console.log('Wallet connected:', account.address);
-            showStatus(`Connected: ${shortAddress}`, 'success');
-            setTimeout(() => hideStatus(), 3000);
-          } else {
-            showStatus('Wallet connection incomplete', 'error');
-          }
+    try {
+      await connect(config, {
+        connector: farcasterMiniApp(),
+        chainId: arbitrum.id
+      });
+      
+      const account = getAccount(config);
+      if (account?.address) {
+        isConnected = true;
+        console.log('Wallet connected:', account.address);
+        showStatus(`Connected: ${account.address.slice(0, 6)}...${account.address.slice(-4)}`, 'success');
+        setTimeout(() => hideStatus(), 3000);
+      } else {
+        showStatus('Wallet connection incomplete', 'error');
+      }
 
-        } catch (err) {
-          console.error('Wallet connection failed:', err);
-          showStatus('Wallet connection failed. Please try again.', 'error');
-        }
+    } catch (err) {
+      console.error('Wallet connection failed:', err);
+      showStatus('Wallet connection failed. Please try again.', 'error');
+    }
 
         // Auto-prompt to add app
         const hasPromptedAddApp = sessionStorage.getItem('hasPromptedAddApp');
